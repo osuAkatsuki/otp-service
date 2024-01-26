@@ -1,0 +1,25 @@
+apps:
+  - name: otp-service-api
+  environment: production
+  codebase: otp-service
+  replicaCount: 1
+  container:
+    image:
+      repository: osuakatsuki/otp-service
+      tag: latest
+    port: 80
+    env:
+      - name: APP_COMPONENT
+        value: api
+    resources:
+      limits:
+        cpu: 300m
+        memory: 250Mi
+      requests:
+        cpu: 150m
+        memory: 150Mi
+    imagePullSecrets:
+      - name: osuakatsuki-registry-secret
+  service:
+    type: ClusterIP
+    port: 80
