@@ -14,9 +14,8 @@ func NewOtpRouteController(otpController controllers.OtpController) OtpRouteCont
 }
 
 func (rc *OtpRouteController) OtpRoutes(rg *gin.RouterGroup) {
-	rg.POST("/", rc.otpController.CreateOtp)
-	rg.POST("/verify", rc.otpController.VerifyOtp)
-	rg.POST("/validate", rc.otpController.ValidateOtp)
-	rg.POST("/disable", rc.otpController.DisableOtp)
-	rg.DELETE("/", rc.otpController.DeleteOtp)
+	otpRouter := rg.Group("/otp")
+
+	otpRouter.POST("/verify", rc.otpController.VerifyOtp)
+	otpRouter.POST("/validate", rc.otpController.ValidateOtp)
 }

@@ -16,11 +16,13 @@ import (
 )
 
 var (
-	DB                 *gorm.DB
-	Settings           settings.Settings
-	Server             *gin.Engine
-	OtpController      controllers.OtpController
-	OtpRouteController routes.OtpRouteController
+	DB                     *gorm.DB
+	Settings               settings.Settings
+	Server                 *gin.Engine
+	OtpController          controllers.OtpController
+	OtpRouteController     routes.OtpRouteController
+	UserOtpController      controllers.UserOtpController
+	UserOtpRouteController routes.UserOtpRouteController
 )
 
 func init() {
@@ -44,6 +46,12 @@ func init() {
 	if err != nil {
 		log.Fatal(err)
 	}
+
+	OtpController = controllers.NewOtpController(DB)
+	OtpRouteController = routes.NewOtpRouteController(OtpController)
+
+	UserOtpController = controllers.NewUserOtpController(DB)
+	UserOtpRouteController = routes.NewUserOtpRouteController(UserOtpController)
 }
 
 func main() {
@@ -69,10 +77,12 @@ func main() {
 		ctx.JSON(http.StatusOK, gin.H{"status": "ok"})
 	})
 
-	router := Server.Group("/otp")
+	router := Server.Group("/")
 	router.Use(secretRequired())
 
 	OtpRouteController.OtpRoutes(router)
+	UserOtpRouteController.UserOtpRoutes(router)
+
 	log.Fatal(Server.Run(fmt.Sprintf(":%d", Settings.APP_PORT)))
 }
 
