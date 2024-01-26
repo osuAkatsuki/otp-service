@@ -16,6 +16,10 @@ type OtpController struct {
 	DB *gorm.DB
 }
 
+const OtpNotSetUp = "otp_not_set_up"
+const OtpDisabled = "otp_disabled"
+const InvalidToken = "invalid_token"
+
 func NewOtpController(DB *gorm.DB) OtpController {
 	return OtpController{DB}
 }
@@ -37,18 +41,18 @@ func (oc *OtpController) VerifyOtp(ctx *gin.Context) {
 	var userOtp models.UserOtp
 	result := oc.DB.First(&userOtp, "user_id = ? AND enabled = true", payload.UserId)
 	if result.Error != nil {
-		ctx.JSON(http.StatusBadRequest, gin.H{"message": "User does not have OTP set up."})
+		ctx.JSON(http.StatusBadRequest, gin.H{"problem": OtpNotSetUp})
 		return
 	}
 
-	secret, err := cryptography.AesDecrypt(userOtp.Secret, settings.OTP_AES_KEY, userOtp.Nonce)
+	secret, err := cryptography.AesDecrypt(userOtp.Secret, settings.OTP_AES_KEY, userOtp.SecretNonce)
 	if err != nil {
 		log.Fatal(err)
 	}
 
 	valid := totp.Validate(payload.Token, secret)
 	if !valid {
-		ctx.JSON(http.StatusBadRequest, gin.H{"message": "Invalid token."})
+		ctx.JSON(http.StatusBadRequest, gin.H{"problem": InvalidToken})
 		return
 	}
 
@@ -75,18 +79,18 @@ func (oc *OtpController) ValidateOtp(ctx *gin.Context) {
 	var userOtp models.UserOtp
 	result := oc.DB.First(&userOtp, "user_id = ? AND enabled = true", payload.UserId)
 	if result.Error != nil {
-		ctx.JSON(http.StatusBadRequest, gin.H{"message": "User does not have OTP set up."})
+		ctx.JSON(http.StatusBadRequest, gin.H{"problem": OtpNotSetUp})
 		return
 	}
 
-	secret, err := cryptography.AesDecrypt(userOtp.Secret, settings.OTP_AES_KEY, userOtp.Nonce)
+	secret, err := cryptography.AesDecrypt(userOtp.Secret, settings.OTP_AES_KEY, userOtp.SecretNonce)
 	if err != nil {
 		log.Fatal(err)
 	}
 
 	valid := totp.Validate(payload.Token, secret)
 	if !valid {
-		ctx.JSON(http.StatusBadRequest, gin.H{"message": "Invalid token."})
+		ctx.JSON(http.StatusBadRequest, gin.H{"problem": InvalidToken})
 		return
 	}
 

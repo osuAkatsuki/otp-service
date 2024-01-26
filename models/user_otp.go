@@ -6,13 +6,14 @@ import (
 )
 
 type UserOtp struct {
-	ID       uuid.UUID `gorm:"type:uuid;primary_key;"`
-	UserId   int       `gorm:"uniqueIndex"`
-	Verified bool      `gorm:"default:false;"`
-	Enabled  bool      `gorm:"default:true;"`
-	Nonce    string
-	Secret   string
-	AuthUrl  string
+	ID           uuid.UUID `gorm:"type:uuid;primary_key;"`
+	UserId       int       `gorm:"uniqueIndex"`
+	Verified     bool      `gorm:"default:false;"`
+	Enabled      bool      `gorm:"default:true;"`
+	SecretNonce  string
+	Secret       string
+	AuthUrlNonce string
+	AuthUrl      string
 }
 
 func (userOtp *UserOtp) BeforeCreate(*gorm.DB) error {

@@ -18,6 +18,8 @@ type UserOtpController struct {
 	DB *gorm.DB
 }
 
+const OtpAlreadySetUp = "otp_already_set_up"
+
 func NewUserOtpController(DB *gorm.DB) UserOtpController {
 	return UserOtpController{DB}
 }
@@ -38,12 +40,17 @@ func (uoc *UserOtpController) GetUserOtp(ctx *gin.Context) {
 		log.Fatal(err.Error())
 	}
 
-	secret, err := cryptography.AesDecrypt(userOtp.Secret, settings.OTP_AES_KEY, userOtp.Nonce)
+	secret, err := cryptography.AesDecrypt(userOtp.Secret, settings.OTP_AES_KEY, userOtp.SecretNonce)
 	if err != nil {
 		log.Fatal(err.Error())
 	}
 
-	ctx.JSON(http.StatusOK, gin.H{"verified": userOtp.Verified, "enabled": userOtp.Enabled, "secret": secret, "auth_url": userOtp.AuthUrl})
+	authUrl, err := cryptography.AesDecrypt(userOtp.AuthUrl, settings.OTP_AES_KEY, userOtp.AuthUrlNonce)
+	if err != nil {
+		log.Fatal(err.Error())
+	}
+
+	ctx.JSON(http.StatusOK, gin.H{"verified": userOtp.Verified, "enabled": userOtp.Enabled, "secret": secret, "auth_url": authUrl})
 }
 
 func (uoc *UserOtpController) CreateUserOtp(ctx *gin.Context) {
@@ -66,22 +73,28 @@ func (uoc *UserOtpController) CreateUserOtp(ctx *gin.Context) {
 	var existingUserOtp models.UserOtp
 	result := uoc.DB.First(&existingUserOtp, "user_id = ?", userId)
 	if result.Error == nil {
-		ctx.JSON(http.StatusConflict, gin.H{"message": "User already has OTP set up."})
+		ctx.JSON(http.StatusConflict, gin.H{"problem": OtpAlreadySetUp})
 		return
 	}
 
 	secret := key.Secret()
+	secretNonce, aesSecret, err := cryptography.AesEncrypt(secret, settings.OTP_AES_KEY)
+	if err != nil {
+		log.Fatal(err)
+	}
 
-	nonce, aesSecret, err := cryptography.AesEncrypt(secret, settings.OTP_AES_KEY)
+	authUrl := key.URL()
+	authUrlNonce, aesAuthUrl, err := cryptography.AesEncrypt(authUrl, settings.OTP_AES_KEY)
 	if err != nil {
 		log.Fatal(err)
 	}
 
 	userOtp := models.UserOtp{
-		UserId:  userId,
-		Nonce:   nonce,
-		Secret:  aesSecret,
-		AuthUrl: key.URL(),
+		UserId:       userId,
+		Secret:       aesSecret,
+		SecretNonce:  secretNonce,
+		AuthUrl:      aesAuthUrl,
+		AuthUrlNonce: authUrlNonce,
 	}
 
 	result = uoc.DB.Create(&userOtp)
@@ -89,7 +102,7 @@ func (uoc *UserOtpController) CreateUserOtp(ctx *gin.Context) {
 		log.Fatal(result.Error.Error())
 	}
 
-	ctx.JSON(http.StatusCreated, gin.H{"secret": secret, "auth_url": userOtp.AuthUrl})
+	ctx.JSON(http.StatusCreated, gin.H{"secret": secret, "auth_url": authUrl})
 }
 
 func (uoc *UserOtpController) DisableUserOtp(ctx *gin.Context) {
@@ -102,7 +115,7 @@ func (uoc *UserOtpController) DisableUserOtp(ctx *gin.Context) {
 	var userOtp models.UserOtp
 	result := uoc.DB.First(&userOtp, "user_id = ? AND enabled = true", userId)
 	if result.Error != nil {
-		ctx.JSON(http.StatusBadRequest, gin.H{"message": "User does not have OTP enabled."})
+		ctx.JSON(http.StatusBadRequest, gin.H{"problem": OtpDisabled})
 		return
 	}
 
@@ -122,7 +135,7 @@ func (uoc *UserOtpController) DeleteUserOtp(ctx *gin.Context) {
 	var userOtp models.UserOtp
 	result := uoc.DB.First(&userOtp, "user_id = ?", userId)
 	if result.Error != nil {
-		ctx.JSON(http.StatusBadRequest, gin.H{"message": "User does not have OTP set up."})
+		ctx.JSON(http.StatusBadRequest, gin.H{"problem": OtpNotSetUp})
 		return
 	}
 
