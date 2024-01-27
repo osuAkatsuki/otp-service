@@ -40,6 +40,7 @@ func (oc *OtpController) VerifyOtp(ctx *gin.Context) {
 	result := oc.DB.First(&userOtp, "user_id = ? AND enabled = true", payload.UserId)
 	if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 		ctx.AbortWithStatus(http.StatusNotFound)
+		return
 	} else if result.Error != nil {
 		log.Fatal(result.Error.Error())
 	}
@@ -79,6 +80,7 @@ func (oc *OtpController) ValidateOtp(ctx *gin.Context) {
 	result := oc.DB.First(&userOtp, "user_id = ? AND enabled = true", payload.UserId)
 	if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 		ctx.AbortWithStatus(http.StatusNotFound)
+		return
 	} else if result.Error != nil {
 		log.Fatal(result.Error.Error())
 	}

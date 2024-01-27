@@ -35,6 +35,7 @@ func (uoc *UserOtpController) GetUserOtp(ctx *gin.Context) {
 	result := uoc.DB.First(&userOtp, "user_id = ?", userId)
 	if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 		ctx.AbortWithStatus(http.StatusNotFound)
+		return
 	} else if result.Error != nil {
 		log.Fatal(result.Error.Error())
 	}
@@ -116,6 +117,7 @@ func (uoc *UserOtpController) DisableUserOtp(ctx *gin.Context) {
 	result := uoc.DB.First(&userOtp, "user_id = ?", userId)
 	if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 		ctx.AbortWithStatus(http.StatusNotFound)
+		return
 	} else if result.Error != nil {
 		log.Fatal(result.Error.Error())
 	}
@@ -142,6 +144,7 @@ func (uoc *UserOtpController) DeleteUserOtp(ctx *gin.Context) {
 	result := uoc.DB.First(&userOtp, "user_id = ?", userId)
 	if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 		ctx.AbortWithStatus(http.StatusNotFound)
+		return
 	} else if result.Error != nil {
 		log.Fatal(result.Error.Error())
 	}

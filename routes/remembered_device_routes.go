@@ -16,5 +16,6 @@ func NewRememberedDeviceRouteController(rememberedDeviceController controllers.R
 func (rc *RememberedDeviceRouteController) RememberedDeviceRoutes(rg *gin.RouterGroup) {
 	rememberedDeviceRouter := rg.Group("/remembered-devices")
 
+	rememberedDeviceRouter.POST("/", rc.rememberedDeviceController.CreateRememberedDevice)
 	rememberedDeviceRouter.GET("/:id", rc.rememberedDeviceController.GetRememberedDevice)
 }
