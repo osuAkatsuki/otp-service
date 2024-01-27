@@ -7,6 +7,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/osuAkatsuki/otp-service/cryptography"
 	"github.com/osuAkatsuki/otp-service/models"
+	"github.com/osuAkatsuki/otp-service/problems"
 	"github.com/osuAkatsuki/otp-service/settings"
 	"github.com/pquerna/otp/totp"
 	"gorm.io/gorm"
@@ -15,10 +16,6 @@ import (
 type OtpController struct {
 	DB *gorm.DB
 }
-
-const OtpNotSetUp = "otp_not_set_up"
-const OtpDisabled = "otp_disabled"
-const InvalidToken = "invalid_token"
 
 func NewOtpController(DB *gorm.DB) OtpController {
 	return OtpController{DB}
@@ -34,14 +31,14 @@ func (oc *OtpController) VerifyOtp(ctx *gin.Context) {
 	var payload *VerifyOtpRequest
 
 	if err := ctx.ShouldBindJSON(&payload); err != nil {
-		ctx.AbortWithStatus(http.StatusBadRequest)
+		ctx.JSON(http.StatusBadRequest, gin.H{"problem": problems.InvalidBody})
 		return
 	}
 
 	var userOtp models.UserOtp
 	result := oc.DB.First(&userOtp, "user_id = ? AND enabled = true", payload.UserId)
 	if result.Error != nil {
-		ctx.JSON(http.StatusBadRequest, gin.H{"problem": OtpNotSetUp})
+		ctx.JSON(http.StatusBadRequest, gin.H{"problem": problems.OtpNotSetUp})
 		return
 	}
 
@@ -52,7 +49,7 @@ func (oc *OtpController) VerifyOtp(ctx *gin.Context) {
 
 	valid := totp.Validate(payload.Token, secret)
 	if !valid {
-		ctx.JSON(http.StatusBadRequest, gin.H{"problem": InvalidToken})
+		ctx.JSON(http.StatusBadRequest, gin.H{"problem": problems.InvalidToken})
 		return
 	}
 
@@ -72,14 +69,14 @@ func (oc *OtpController) ValidateOtp(ctx *gin.Context) {
 	var payload *ValidateOtpRequest
 
 	if err := ctx.ShouldBindJSON(&payload); err != nil {
-		ctx.AbortWithStatus(http.StatusBadRequest)
+		ctx.JSON(http.StatusBadRequest, gin.H{"problem": problems.InvalidBody})
 		return
 	}
 
 	var userOtp models.UserOtp
 	result := oc.DB.First(&userOtp, "user_id = ? AND enabled = true", payload.UserId)
 	if result.Error != nil {
-		ctx.JSON(http.StatusBadRequest, gin.H{"problem": OtpNotSetUp})
+		ctx.JSON(http.StatusBadRequest, gin.H{"problem": problems.OtpNotSetUp})
 		return
 	}
 
@@ -90,7 +87,7 @@ func (oc *OtpController) ValidateOtp(ctx *gin.Context) {
 
 	valid := totp.Validate(payload.Token, secret)
 	if !valid {
-		ctx.JSON(http.StatusBadRequest, gin.H{"problem": InvalidToken})
+		ctx.JSON(http.StatusBadRequest, gin.H{"problem": problems.InvalidToken})
 		return
 	}
 

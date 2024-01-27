@@ -44,7 +44,7 @@ func init() {
 	DB.AutoMigrate(&models.UserOtp{})
 
 	if err != nil {
-		log.Fatal(err)
+		log.Fatal(err.Error())
 	}
 
 	OtpController = controllers.NewOtpController(DB)

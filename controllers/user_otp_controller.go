@@ -9,6 +9,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/osuAkatsuki/otp-service/cryptography"
 	"github.com/osuAkatsuki/otp-service/models"
+	"github.com/osuAkatsuki/otp-service/problems"
 	"github.com/osuAkatsuki/otp-service/settings"
 	"github.com/pquerna/otp/totp"
 	"gorm.io/gorm"
@@ -18,8 +19,6 @@ type UserOtpController struct {
 	DB *gorm.DB
 }
 
-const OtpAlreadySetUp = "otp_already_set_up"
-
 func NewUserOtpController(DB *gorm.DB) UserOtpController {
 	return UserOtpController{DB}
 }
@@ -28,7 +27,7 @@ func (uoc *UserOtpController) GetUserOtp(ctx *gin.Context) {
 	settings := settings.GetSettings()
 	userId, err := strconv.Atoi(ctx.Param("user_id"))
 	if err != nil {
-		ctx.AbortWithStatus(http.StatusBadRequest)
+		ctx.JSON(http.StatusBadRequest, gin.H{"problem": problems.InvalidUserId})
 		return
 	}
 
@@ -57,13 +56,14 @@ func (uoc *UserOtpController) CreateUserOtp(ctx *gin.Context) {
 	settings := settings.GetSettings()
 	userId, err := strconv.Atoi(ctx.Param("user_id"))
 	if err != nil {
-		ctx.AbortWithStatus(http.StatusBadRequest)
+		ctx.JSON(http.StatusBadRequest, gin.H{"problem": problems.InvalidUserId})
 		return
 	}
 
 	key, err := totp.Generate(totp.GenerateOpts{
-		Issuer:     settings.OTP_ISSUER,
-		SecretSize: uint(settings.OTP_SECRET_SIZE),
+		Issuer:      settings.OTP_ISSUER,
+		AccountName: strconv.Itoa(userId),
+		SecretSize:  uint(settings.OTP_SECRET_SIZE),
 	})
 
 	if err != nil {
@@ -73,7 +73,7 @@ func (uoc *UserOtpController) CreateUserOtp(ctx *gin.Context) {
 	var existingUserOtp models.UserOtp
 	result := uoc.DB.First(&existingUserOtp, "user_id = ?", userId)
 	if result.Error == nil {
-		ctx.JSON(http.StatusConflict, gin.H{"problem": OtpAlreadySetUp})
+		ctx.JSON(http.StatusConflict, gin.H{"problem": problems.OtpAlreadySetUp})
 		return
 	}
 
@@ -108,14 +108,14 @@ func (uoc *UserOtpController) CreateUserOtp(ctx *gin.Context) {
 func (uoc *UserOtpController) DisableUserOtp(ctx *gin.Context) {
 	userId, err := strconv.Atoi(ctx.Param("user_id"))
 	if err != nil {
-		ctx.AbortWithStatus(http.StatusBadRequest)
+		ctx.JSON(http.StatusBadRequest, gin.H{"problem": problems.InvalidUserId})
 		return
 	}
 
 	var userOtp models.UserOtp
 	result := uoc.DB.First(&userOtp, "user_id = ? AND enabled = true", userId)
 	if result.Error != nil {
-		ctx.JSON(http.StatusBadRequest, gin.H{"problem": OtpDisabled})
+		ctx.JSON(http.StatusBadRequest, gin.H{"problem": problems.OtpDisabled})
 		return
 	}
 
@@ -128,14 +128,14 @@ func (uoc *UserOtpController) DisableUserOtp(ctx *gin.Context) {
 func (uoc *UserOtpController) DeleteUserOtp(ctx *gin.Context) {
 	userId, err := strconv.Atoi(ctx.Param("user_id"))
 	if err != nil {
-		ctx.AbortWithStatus(http.StatusBadRequest)
+		ctx.JSON(http.StatusBadRequest, gin.H{"problem": problems.InvalidUserId})
 		return
 	}
 
 	var userOtp models.UserOtp
 	result := uoc.DB.First(&userOtp, "user_id = ?", userId)
 	if result.Error != nil {
-		ctx.JSON(http.StatusBadRequest, gin.H{"problem": OtpNotSetUp})
+		ctx.JSON(http.StatusBadRequest, gin.H{"problem": problems.OtpNotSetUp})
 		return
 	}
 

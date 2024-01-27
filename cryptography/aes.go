@@ -4,7 +4,8 @@ import (
 	"crypto/aes"
 	"crypto/cipher"
 	"crypto/rand"
-	"encoding/base64"
+	"encoding/hex"
+	"fmt"
 	"io"
 )
 
@@ -24,10 +25,9 @@ func AesEncrypt(s, key string) (string, string, error) {
 		return "", "", err
 	}
 
-	output := make([]byte, len(s))
-	cipherText := gcm.Seal(output, nonce, []byte(s), nil)
+	cipherText := gcm.Seal(nil, nonce, []byte(s), nil)
 
-	return base64.StdEncoding.EncodeToString(nonce), base64.StdEncoding.EncodeToString(cipherText), nil
+	return fmt.Sprintf("%x", nonce), fmt.Sprintf("%x", cipherText), nil
 }
 
 func AesDecrypt(c, key, nonce string) (string, error) {
@@ -41,12 +41,12 @@ func AesDecrypt(c, key, nonce string) (string, error) {
 		return "", err
 	}
 
-	nonceBytes, err := base64.StdEncoding.DecodeString(nonce)
+	nonceBytes, err := hex.DecodeString(nonce)
 	if err != nil {
 		return "", err
 	}
 
-	cipherBytes, err := base64.StdEncoding.DecodeString(c)
+	cipherBytes, err := hex.DecodeString(c)
 	if err != nil {
 		return "", err
 	}
