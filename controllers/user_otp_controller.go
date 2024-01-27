@@ -36,7 +36,7 @@ func (uoc *UserOtpController) GetUserOtp(ctx *gin.Context) {
 	if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 		ctx.AbortWithStatus(http.StatusNotFound)
 	} else if result.Error != nil {
-		log.Fatal(err.Error())
+		log.Fatal(result.Error.Error())
 	}
 
 	secret, err := cryptography.AesDecrypt(userOtp.Secret, settings.OTP_AES_KEY, userOtp.SecretNonce)
@@ -113,8 +113,14 @@ func (uoc *UserOtpController) DisableUserOtp(ctx *gin.Context) {
 	}
 
 	var userOtp models.UserOtp
-	result := uoc.DB.First(&userOtp, "user_id = ? AND enabled = true", userId)
-	if result.Error != nil {
+	result := uoc.DB.First(&userOtp, "user_id = ?", userId)
+	if errors.Is(result.Error, gorm.ErrRecordNotFound) {
+		ctx.AbortWithStatus(http.StatusNotFound)
+	} else if result.Error != nil {
+		log.Fatal(result.Error.Error())
+	}
+
+	if !userOtp.Enabled {
 		ctx.JSON(http.StatusBadRequest, gin.H{"problem": problems.OtpDisabled})
 		return
 	}
@@ -134,9 +140,10 @@ func (uoc *UserOtpController) DeleteUserOtp(ctx *gin.Context) {
 
 	var userOtp models.UserOtp
 	result := uoc.DB.First(&userOtp, "user_id = ?", userId)
-	if result.Error != nil {
-		ctx.JSON(http.StatusBadRequest, gin.H{"problem": problems.OtpNotSetUp})
-		return
+	if errors.Is(result.Error, gorm.ErrRecordNotFound) {
+		ctx.AbortWithStatus(http.StatusNotFound)
+	} else if result.Error != nil {
+		log.Fatal(result.Error.Error())
 	}
 
 	uoc.DB.Delete(&userOtp)

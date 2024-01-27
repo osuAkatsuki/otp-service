@@ -1,6 +1,7 @@
 package controllers
 
 import (
+	"errors"
 	"log"
 	"net/http"
 
@@ -37,9 +38,10 @@ func (oc *OtpController) VerifyOtp(ctx *gin.Context) {
 
 	var userOtp models.UserOtp
 	result := oc.DB.First(&userOtp, "user_id = ? AND enabled = true", payload.UserId)
-	if result.Error != nil {
-		ctx.JSON(http.StatusBadRequest, gin.H{"problem": problems.OtpNotSetUp})
-		return
+	if errors.Is(result.Error, gorm.ErrRecordNotFound) {
+		ctx.AbortWithStatus(http.StatusNotFound)
+	} else if result.Error != nil {
+		log.Fatal(result.Error.Error())
 	}
 
 	secret, err := cryptography.AesDecrypt(userOtp.Secret, settings.OTP_AES_KEY, userOtp.SecretNonce)
@@ -75,9 +77,10 @@ func (oc *OtpController) ValidateOtp(ctx *gin.Context) {
 
 	var userOtp models.UserOtp
 	result := oc.DB.First(&userOtp, "user_id = ? AND enabled = true", payload.UserId)
-	if result.Error != nil {
-		ctx.JSON(http.StatusBadRequest, gin.H{"problem": problems.OtpNotSetUp})
-		return
+	if errors.Is(result.Error, gorm.ErrRecordNotFound) {
+		ctx.AbortWithStatus(http.StatusNotFound)
+	} else if result.Error != nil {
+		log.Fatal(result.Error.Error())
 	}
 
 	secret, err := cryptography.AesDecrypt(userOtp.Secret, settings.OTP_AES_KEY, userOtp.SecretNonce)

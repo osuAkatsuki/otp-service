@@ -16,13 +16,15 @@ import (
 )
 
 var (
-	DB                     *gorm.DB
-	Settings               settings.Settings
-	Server                 *gin.Engine
-	OtpController          controllers.OtpController
-	OtpRouteController     routes.OtpRouteController
-	UserOtpController      controllers.UserOtpController
-	UserOtpRouteController routes.UserOtpRouteController
+	DB                              *gorm.DB
+	Settings                        settings.Settings
+	Server                          *gin.Engine
+	OtpController                   controllers.OtpController
+	OtpRouteController              routes.OtpRouteController
+	UserOtpController               controllers.UserOtpController
+	UserOtpRouteController          routes.UserOtpRouteController
+	RememberedDeviceController      controllers.RememberedDeviceController
+	RememberedDeviceRouteController routes.RememberedDeviceRouteController
 )
 
 func init() {
@@ -42,6 +44,7 @@ func init() {
 	var err error
 	DB, err = gorm.Open(mysql.Open(dsn), &gorm.Config{})
 	DB.AutoMigrate(&models.UserOtp{})
+	DB.AutoMigrate(&models.RememberedDevice{})
 
 	if err != nil {
 		log.Fatal(err.Error())
@@ -52,6 +55,9 @@ func init() {
 
 	UserOtpController = controllers.NewUserOtpController(DB)
 	UserOtpRouteController = routes.NewUserOtpRouteController(UserOtpController)
+
+	RememberedDeviceController = controllers.NewRememberedDeviceController(DB)
+	RememberedDeviceRouteController = routes.NewRememberedDeviceRouteController(RememberedDeviceController)
 }
 
 func main() {
@@ -82,6 +88,7 @@ func main() {
 
 	OtpRouteController.OtpRoutes(router)
 	UserOtpRouteController.UserOtpRoutes(router)
+	RememberedDeviceRouteController.RememberedDeviceRoutes(router)
 
 	log.Fatal(Server.Run(fmt.Sprintf(":%d", Settings.APP_PORT)))
 }
