@@ -2,7 +2,7 @@ package controllers
 
 import (
 	"errors"
-	"log"
+	"log/slog"
 	"net/http"
 	"strconv"
 
@@ -37,17 +37,20 @@ func (uoc *UserOtpController) GetUserOtp(ctx *gin.Context) {
 		ctx.AbortWithStatus(http.StatusNotFound)
 		return
 	} else if result.Error != nil {
-		log.Fatal(result.Error.Error())
+		slog.Error("Error fetching user OTP", "error", result.Error.Error())
+		ctx.AbortWithStatus(http.StatusInternalServerError)
 	}
 
 	secret, err := cryptography.AesDecrypt(userOtp.Secret, settings.OTP_AES_KEY, userOtp.SecretNonce)
 	if err != nil {
-		log.Fatal(err.Error())
+		slog.Error("Error decrypting user OTP", "error", err.Error())
+		ctx.AbortWithStatus(http.StatusInternalServerError)
 	}
 
 	authUrl, err := cryptography.AesDecrypt(userOtp.AuthUrl, settings.OTP_AES_KEY, userOtp.AuthUrlNonce)
 	if err != nil {
-		log.Fatal(err.Error())
+		slog.Error("Error decrypting user OTP", "error", err.Error())
+		ctx.AbortWithStatus(http.StatusInternalServerError)
 	}
 
 	ctx.JSON(http.StatusOK, gin.H{"verified": userOtp.Verified, "enabled": userOtp.Enabled, "secret": secret, "auth_url": authUrl})
@@ -68,7 +71,8 @@ func (uoc *UserOtpController) CreateUserOtp(ctx *gin.Context) {
 	})
 
 	if err != nil {
-		log.Fatal(err.Error())
+		slog.Error("Error generating OTP", "error", err.Error())
+		ctx.AbortWithStatus(http.StatusInternalServerError)
 	}
 
 	var existingUserOtp models.UserOtp
@@ -76,18 +80,23 @@ func (uoc *UserOtpController) CreateUserOtp(ctx *gin.Context) {
 	if result.Error == nil {
 		ctx.JSON(http.StatusConflict, gin.H{"problem": problems.OtpAlreadySetUp})
 		return
+	} else if result.Error != nil && !errors.Is(result.Error, gorm.ErrRecordNotFound) {
+		slog.Error("Error fetching user OTP", "error", result.Error.Error())
+		ctx.AbortWithStatus(http.StatusInternalServerError)
 	}
 
 	secret := key.Secret()
 	secretNonce, aesSecret, err := cryptography.AesEncrypt(secret, settings.OTP_AES_KEY)
 	if err != nil {
-		log.Fatal(err)
+		slog.Error("Error encrypting user OTP", "error", err.Error())
+		ctx.AbortWithStatus(http.StatusInternalServerError)
 	}
 
 	authUrl := key.URL()
 	authUrlNonce, aesAuthUrl, err := cryptography.AesEncrypt(authUrl, settings.OTP_AES_KEY)
 	if err != nil {
-		log.Fatal(err)
+		slog.Error("Error encrypting user OTP", "error", err.Error())
+		ctx.AbortWithStatus(http.StatusInternalServerError)
 	}
 
 	userOtp := models.UserOtp{
@@ -100,7 +109,8 @@ func (uoc *UserOtpController) CreateUserOtp(ctx *gin.Context) {
 
 	result = uoc.DB.Create(&userOtp)
 	if result.Error != nil {
-		log.Fatal(result.Error.Error())
+		slog.Error("Error creating user OTP", "error", result.Error.Error())
+		ctx.AbortWithStatus(http.StatusInternalServerError)
 	}
 
 	ctx.JSON(http.StatusCreated, gin.H{"secret": secret, "auth_url": authUrl})
@@ -119,7 +129,8 @@ func (uoc *UserOtpController) DisableUserOtp(ctx *gin.Context) {
 		ctx.AbortWithStatus(http.StatusNotFound)
 		return
 	} else if result.Error != nil {
-		log.Fatal(result.Error.Error())
+		slog.Error("Error fetching user OTP", "error", result.Error.Error())
+		ctx.AbortWithStatus(http.StatusInternalServerError)
 	}
 
 	if !userOtp.Enabled {
@@ -146,7 +157,8 @@ func (uoc *UserOtpController) DeleteUserOtp(ctx *gin.Context) {
 		ctx.AbortWithStatus(http.StatusNotFound)
 		return
 	} else if result.Error != nil {
-		log.Fatal(result.Error.Error())
+		slog.Error("Error fetching user OTP", "error", result.Error.Error())
+		ctx.AbortWithStatus(http.StatusInternalServerError)
 	}
 
 	uoc.DB.Delete(&userOtp)

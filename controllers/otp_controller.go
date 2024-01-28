@@ -2,7 +2,7 @@ package controllers
 
 import (
 	"errors"
-	"log"
+	"log/slog"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -42,12 +42,14 @@ func (oc *OtpController) VerifyOtp(ctx *gin.Context) {
 		ctx.AbortWithStatus(http.StatusNotFound)
 		return
 	} else if result.Error != nil {
-		log.Fatal(result.Error.Error())
+		slog.Error("Error fetching user OTP", "error", result.Error.Error())
+		ctx.AbortWithStatus(http.StatusInternalServerError)
 	}
 
 	secret, err := cryptography.AesDecrypt(userOtp.Secret, settings.OTP_AES_KEY, userOtp.SecretNonce)
 	if err != nil {
-		log.Fatal(err)
+		slog.Error("Error decrypting user OTP", "error", err.Error())
+		ctx.AbortWithStatus(http.StatusInternalServerError)
 	}
 
 	valid := totp.Validate(payload.Token, secret)
@@ -82,12 +84,14 @@ func (oc *OtpController) ValidateOtp(ctx *gin.Context) {
 		ctx.AbortWithStatus(http.StatusNotFound)
 		return
 	} else if result.Error != nil {
-		log.Fatal(result.Error.Error())
+		slog.Error("Error fetching user OTP", "error", result.Error.Error())
+		ctx.AbortWithStatus(http.StatusInternalServerError)
 	}
 
 	secret, err := cryptography.AesDecrypt(userOtp.Secret, settings.OTP_AES_KEY, userOtp.SecretNonce)
 	if err != nil {
-		log.Fatal(err)
+		slog.Error("Error decrypting user OTP", "error", err.Error())
+		ctx.AbortWithStatus(http.StatusInternalServerError)
 	}
 
 	valid := totp.Validate(payload.Token, secret)

@@ -2,12 +2,14 @@ package main
 
 import (
 	"fmt"
-	"log"
+	"log/slog"
 	"net/http"
+	"os"
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"github.com/osuAkatsuki/otp-service/controllers"
+	"github.com/osuAkatsuki/otp-service/middleware"
 	"github.com/osuAkatsuki/otp-service/models"
 	"github.com/osuAkatsuki/otp-service/routes"
 	"github.com/osuAkatsuki/otp-service/settings"
@@ -28,10 +30,17 @@ var (
 )
 
 func init() {
+	logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
+
+	slog.SetDefault(logger)
+
 	settings.LoadSettings()
 
 	Settings = settings.GetSettings()
-	Server = gin.Default()
+
+	gin.SetMode(gin.ReleaseMode)
+	Server = gin.New()
+	Server.Use(middleware.StructuredLogger(), gin.Recovery())
 
 	dsn := fmt.Sprintf("%s:%s@tcp(%s:%d)/%s?parseTime=true",
 		Settings.DB_USERNAME,
@@ -47,7 +56,8 @@ func init() {
 	DB.AutoMigrate(&models.RememberedDevice{})
 
 	if err != nil {
-		log.Fatal(err.Error())
+		slog.Error("Error connecting to database", "error", err.Error())
+		os.Exit(1)
 	}
 
 	OtpController = controllers.NewOtpController(DB)
@@ -90,7 +100,7 @@ func main() {
 	UserOtpRouteController.UserOtpRoutes(router)
 	RememberedDeviceRouteController.RememberedDeviceRoutes(router)
 
-	log.Fatal(Server.Run(fmt.Sprintf(":%d", Settings.APP_PORT)))
+	slog.Error("Running server", "error", Server.Run(fmt.Sprintf(":%d", Settings.APP_PORT)).Error())
 }
 
 func secretRequired() gin.HandlerFunc {

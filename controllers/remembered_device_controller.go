@@ -2,7 +2,7 @@ package controllers
 
 import (
 	"errors"
-	"log"
+	"log/slog"
 	"net/http"
 	"time"
 
@@ -38,7 +38,8 @@ func (rdc *RememberedDeviceController) CreateRememberedDevice(ctx *gin.Context) 
 		ctx.JSON(http.StatusBadRequest, gin.H{"problem": problems.OtpNotSetUp})
 		return
 	} else if result.Error != nil {
-		log.Fatal(result.Error.Error())
+		slog.Error("Error fetching user OTP", "error", result.Error.Error())
+		ctx.AbortWithStatus(http.StatusInternalServerError)
 	}
 
 	rememberedDevice := models.RememberedDevice{
@@ -48,7 +49,8 @@ func (rdc *RememberedDeviceController) CreateRememberedDevice(ctx *gin.Context) 
 
 	result = rdc.DB.Create(&rememberedDevice)
 	if result.Error != nil {
-		log.Fatal(result.Error.Error())
+		slog.Error("Error creating remembered device", "error", result.Error.Error())
+		ctx.AbortWithStatus(http.StatusInternalServerError)
 	}
 
 	ctx.JSON(http.StatusCreated, gin.H{"id": rememberedDevice.ID, "expires_at": rememberedDevice.ExpiresAt})
@@ -62,7 +64,8 @@ func (rdc *RememberedDeviceController) GetRememberedDevice(ctx *gin.Context) {
 	if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 		ctx.AbortWithStatus(http.StatusNotFound)
 	} else if result.Error != nil {
-		log.Fatal(result.Error.Error())
+		slog.Error("Error fetching remembered device", "error", result.Error.Error())
+		ctx.AbortWithStatus(http.StatusInternalServerError)
 	}
 
 	var userOtp models.UserOtp
@@ -70,7 +73,8 @@ func (rdc *RememberedDeviceController) GetRememberedDevice(ctx *gin.Context) {
 	if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 		ctx.AbortWithStatus(http.StatusNotFound)
 	} else if result.Error != nil {
-		log.Fatal(result.Error.Error())
+		slog.Error("Error fetching user OTP", "error", result.Error.Error())
+		ctx.AbortWithStatus(http.StatusInternalServerError)
 	}
 
 	ctx.JSON(http.StatusOK, gin.H{"user_id": userOtp.UserId, "expires_at": rememberedDevice.ExpiresAt})
